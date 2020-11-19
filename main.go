@@ -4,15 +4,16 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
+	"net/http"
+	"strings"
+
 	"github.com/gorilla/mux"
 	"github.com/r3dcrosse/sponsor-service/common/circuitbreaker"
 	"github.com/r3dcrosse/sponsor-service/common/db"
 	"github.com/r3dcrosse/sponsor-service/common/messaging"
 	"github.com/r3dcrosse/sponsor-service/common/router"
 	"github.com/streadway/amqp"
-	"log"
-	"net/http"
-	"strings"
 )
 
 type LevelMessage struct {
@@ -51,12 +52,17 @@ func onEventCreatedMessage(delivery amqp.Delivery) {
 	*/
 
 	// Split the delivery body on " ::: "
-	s := strings.SplitAfter(msg, " ::: ")[1]
-	dat := EventMessage{}
+	s := msg // strings.SplitAfter(msg, " ::: ")[1]
+	var dat EventMessage
+
+	log.Printf("Going to JSON deserialize the data, now: %s\n", s)
+
 	if err := json.Unmarshal([]byte(s), &dat); err != nil {
-		fmt.Printf("Could not parse new event json from rabbitmq message | %s", err)
+		log.Printf("Could not parse new event json from rabbitmq message | %s", err)
 		return
 	}
+
+	log.Print("It seems everything went ok.")
 
 	// Save the event in the DB
 	savedEvent := db.CreateEvent(dat.Name, dat.Id)
